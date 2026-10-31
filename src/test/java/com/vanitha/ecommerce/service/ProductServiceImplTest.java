@@ -1,11 +1,10 @@
-package com.vanitha.ecommerce;
+package com.vanitha.ecommerce.service;
 
 import com.vanitha.ecommerce.dto.ProductRequest;
 import com.vanitha.ecommerce.dto.ProductResponse;
 import com.vanitha.ecommerce.entity.Product;
 import com.vanitha.ecommerce.exception.ProductNotFoundException;
 import com.vanitha.ecommerce.repository.ProductRepository;
-import com.vanitha.ecommerce.service.ProductServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -84,18 +83,9 @@ public class ProductServiceImplTest {
 
     @Test
     void getProductById_shouldThrowProductNotFoundException(){
-        Product product = Product.builder()
-                .id(1L)
-                .name("Macbook Pro")
-                .description("Apple laptop")
-                .price(new BigDecimal("150000"))
-                .stock(10)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-        when(productRepository.findById(1L)).thenReturn(Optional.empty());
-        assertThrows(ProductNotFoundException.class, () -> productService.getProductById(1L));
-        verify(productRepository).findById(1L);
+        when(productRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThrows(ProductNotFoundException.class, () -> productService.getProductById(99L));
+        verify(productRepository).findById(99L);
     }
 
     @Test
@@ -121,6 +111,28 @@ public class ProductServiceImplTest {
         assertEquals(2L, response.get(1).getId());
 
         verify(productRepository).findAll();
+    }
+
+    @Test
+    void updateProduct_shouldReturnUpdatedProduct(){
+        Product existingProduct = Product.builder()
+                .id(1L)
+                .name("Old Product")
+                .description("Old description")
+                .price(new BigDecimal("100000"))
+                .stock(10)
+                .build();
+        ProductRequest productRequest = ProductRequest.builder().name("Macbook Pro").description("Apple laptop").price(new BigDecimal("150000")).stock(30).build();
+        Product updatedProduct = Product.builder().id(1L).name("Macbook Pro").description("Apple laptop").price(new BigDecimal("150000")).stock(30).build();
+        when(productRepository.findById(1L)).thenReturn(Optional.of(existingProduct));
+        when(productRepository.save(any(Product.class))).thenReturn(updatedProduct);
+        ProductResponse productResponse = productService.updateProduct(1L, productRequest);
+        assertEquals("Macbook Pro", productResponse.getName());
+        assertEquals("Apple laptop", productResponse.getDescription());
+        assertEquals(new BigDecimal("150000"), productResponse.getPrice());
+        assertEquals(30, productResponse.getStock());
+        verify(productRepository).findById(1L);
+        verify(productRepository).save(any(Product.class));
     }
 
     @Test

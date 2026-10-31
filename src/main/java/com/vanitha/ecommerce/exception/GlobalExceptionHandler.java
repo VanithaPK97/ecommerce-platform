@@ -2,6 +2,7 @@ package com.vanitha.ecommerce.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -21,8 +22,29 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ErrorResponse handleValidationErrors(MethodArgumentNotValidException exception, HttpServletRequest servletRequest) {
-        Map<String, String> fieldErrors = exception.getBindingResult().getFieldErrors().stream().collect(Collectors.toMap(error -> error.getField(), error -> error.getDefaultMessage(), (first, second) -> first));
-        return new ErrorResponse(Instant.now(), HttpStatus.BAD_REQUEST.value(), "VALIDATION_FAILED", "Request validation failed", servletRequest.getRequestURI(), fieldErrors);
+    public ResponseEntity<ErrorResponse> handleValidationErrors(
+            MethodArgumentNotValidException exception,
+            HttpServletRequest request) {
+
+        Map<String, String> fieldErrors =
+                exception.getBindingResult()
+                        .getFieldErrors()
+                        .stream()
+                        .collect(Collectors.toMap(
+                                error -> error.getField(),
+                                error -> error.getDefaultMessage(),
+                                (first, second) -> first
+                        ));
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                Instant.now(),
+                400,
+                "VALIDATION_FAILED",
+                "Request validation failed",
+                request.getRequestURI(),
+                fieldErrors
+        );
+
+        return ResponseEntity.badRequest().body(errorResponse);
     }
 }
