@@ -1,5 +1,6 @@
 package com.vanitha.ecommerce.controller;
 
+import com.vanitha.ecommerce.dto.PageResponse;
 import com.vanitha.ecommerce.dto.ProductRequest;
 import com.vanitha.ecommerce.dto.ProductResponse;
 
@@ -8,6 +9,7 @@ import com.vanitha.ecommerce.service.ProductServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.*;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -199,5 +201,101 @@ public class ProductControllerTest {
                         .value("Product not found with id: 999"));
 
         verify(productService).getProductById(999L);
+    }
+
+    @Test
+    void getProducts_shouldReturnPaginatedProducts() throws Exception {
+
+        ProductResponse product1 = ProductResponse.builder()
+                .id(1L)
+                .name("MacBook Pro")
+                .price(new BigDecimal("150000.00"))
+                .stock(10)
+                .build();
+
+        ProductResponse product2 = ProductResponse.builder()
+                .id(2L)
+                .name("iPhone")
+                .price(new BigDecimal("80000.00"))
+                .stock(5)
+                .build();
+
+        Pageable pageable = PageRequest.of(
+                0, 2, Sort.by("price").descending()
+        );
+
+        PageResponse<ProductResponse> productPage =
+                PageResponse.<ProductResponse>builder()
+                        .content(List.of(product1, product2))
+                        .page(0)
+                        .size(2)
+                        .totalElements(3)
+                        .totalPages(2)
+                        .first(true)
+                        .last(false)
+                        .hasNext(true)
+                        .hasPrevious(false)
+                        .build();
+
+        when(productService.getProducts(any(Pageable.class)))
+                .thenReturn(productPage);
+
+        mockMvc.perform(get("/api/v1/products/page")
+                        .param("page", "0")
+                        .param("size", "2")
+                        .param("sortBy", "price")
+                        .param("direction", "desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.hasNext").value(true));
+    }
+
+    @Test
+    void getProducts_withNegativePage_shouldReturnBadRequest() throws Exception {
+
+        mockMvc.perform(get("/api/v1/products/page")
+                        .param("page", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors.page").exists());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getProducts_withInvalidSize_shouldReturnBadRequest() throws Exception {
+
+        mockMvc.perform(get("/api/v1/products/page")
+                        .param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fieldErrors.size").exists());
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getProducts_withInvalidSortField_shouldReturnBadRequest() throws Exception {
+
+        mockMvc.perform(get("/api/v1/products/page")
+                        .param("sortBy", "invalidField"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_ARGUMENT"));
+
+        verifyNoInteractions(productService);
+    }
+
+    @Test
+    void getProducts_withInvalidDirection_shouldReturnBadRequest() throws Exception {
+
+        mockMvc.perform(get("/api/v1/products/page")
+                        .param("direction", "invalid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_ARGUMENT"));
+
+        verifyNoInteractions(productService);
     }
 }

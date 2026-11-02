@@ -1,11 +1,14 @@
 package com.vanitha.ecommerce.service;
 
+import com.vanitha.ecommerce.dto.PageResponse;
 import com.vanitha.ecommerce.dto.ProductPatchRequest;
 import com.vanitha.ecommerce.dto.ProductRequest;
 import com.vanitha.ecommerce.dto.ProductResponse;
 import com.vanitha.ecommerce.entity.Product;
 import com.vanitha.ecommerce.exception.ProductNotFoundException;
 import com.vanitha.ecommerce.repository.ProductRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.ProviderNotFoundException;
@@ -37,6 +40,23 @@ public class ProductServiceImpl implements ProductService{
     @Override
     public List<ProductResponse> getAllProducts() {
         return productRepository.findAll().stream().map(this::mapToResponse).toList();
+    }
+
+    @Override
+    public PageResponse<ProductResponse> getProducts(Pageable pageable) {
+        Page<Product> productPage = productRepository.findAll(pageable);
+
+        return PageResponse.<ProductResponse>builder()
+                .content(productPage.map(this::mapToResponse).getContent())
+                .page(productPage.getNumber())
+                .size(productPage.getSize())
+                .totalElements(productPage.getTotalElements())
+                .totalPages(productPage.getTotalPages())
+                .first(productPage.isFirst())
+                .last(productPage.isLast())
+                .hasNext(productPage.hasNext())
+                .hasPrevious(productPage.hasPrevious())
+                .build();
     }
 
     @Override

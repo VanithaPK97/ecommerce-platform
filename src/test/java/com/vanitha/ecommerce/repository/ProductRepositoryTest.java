@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -122,5 +125,24 @@ class ProductRepositoryTest {
         Optional<Product> result = productRepository.findById(999L);
 
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void findAllWithPagination_shouldReturnRequestedPage() {
+
+        productRepository.saveAll(List.of(
+                createProduct(),
+                createProduct(),
+                createProduct()
+        ));
+
+        Pageable pageable = PageRequest.of(0, 2);
+
+        Page<Product> result = productRepository.findAll(pageable);
+
+        assertEquals(2, result.getContent().size());
+        assertEquals(3, result.getTotalElements());
+        assertEquals(2, result.getTotalPages());
+        assertTrue(result.hasNext());
     }
 }

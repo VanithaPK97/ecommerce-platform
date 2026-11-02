@@ -1,5 +1,6 @@
 package com.vanitha.ecommerce.service;
 
+import com.vanitha.ecommerce.dto.PageResponse;
 import com.vanitha.ecommerce.dto.ProductRequest;
 import com.vanitha.ecommerce.dto.ProductResponse;
 import com.vanitha.ecommerce.entity.Product;
@@ -10,6 +11,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,6 +33,18 @@ public class ProductServiceImplTest {
 
     @InjectMocks
     private ProductServiceImpl productService;
+
+    private Product createProduct() {
+        return Product.builder()
+                .id(1L)
+                .name("MacBook Pro")
+                .description("Apple laptop")
+                .price(new BigDecimal("150000.00"))
+                .stock(10)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+    }
 
     @Test
     void createProduct_shouldReturnCreatedProduct(){
@@ -111,6 +128,32 @@ public class ProductServiceImplTest {
         assertEquals(2L, response.get(1).getId());
 
         verify(productRepository).findAll();
+    }
+
+    @Test
+    void getProducts_shouldReturnPaginatedProducts() {
+        Product product1 = createProduct();
+        Product product2 = createProduct();
+
+        Pageable pageable = PageRequest.of(0, 2);
+
+        Page<Product> productPage = new PageImpl<>(
+                List.of(product1, product2),
+                pageable,
+                3
+        );
+
+        when(productRepository.findAll(pageable))
+                .thenReturn(productPage);
+
+        PageResponse<ProductResponse> result =
+                productService.getProducts(pageable);
+
+        assertEquals(2, result.content().size());
+        assertEquals(3, result.totalElements());
+        assertEquals(2, result.totalPages());
+
+        verify(productRepository).findAll(pageable);
     }
 
     @Test

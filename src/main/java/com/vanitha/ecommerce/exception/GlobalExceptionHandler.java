@@ -1,6 +1,7 @@
 package com.vanitha.ecommerce.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -38,7 +39,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse errorResponse = new ErrorResponse(
                 Instant.now(),
-                400,
+                HttpStatus.BAD_REQUEST.value(),
                 "VALIDATION_FAILED",
                 "Request validation failed",
                 request.getRequestURI(),
@@ -46,5 +47,47 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidArguments(IllegalArgumentException illegalArgumentException, HttpServletRequest httpServletRequest) {
+
+        ErrorResponse response = new ErrorResponse(Instant.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "INVALID_ARGUMENT",
+                illegalArgumentException.getMessage(),
+                httpServletRequest.getRequestURI(),
+                null);
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(
+            ConstraintViolationException exception,
+            HttpServletRequest request) {
+
+        Map<String, String> fieldErrors = exception.getConstraintViolations()
+                .stream()
+                .collect(Collectors.toMap(
+                        violation -> {
+                            String propertyPath = violation.getPropertyPath().toString();
+                            return propertyPath.substring(
+                                    propertyPath.lastIndexOf('.') + 1
+                            );
+                        },
+                        violation -> violation.getMessage(),
+                        (existing, replacement) -> existing
+                ));
+
+        ErrorResponse response = new ErrorResponse(
+                Instant.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "VALIDATION_FAILED",
+                "Request validation failed",
+                request.getRequestURI(),
+                fieldErrors
+        );
+
+        return ResponseEntity.badRequest().body(response);
     }
 }
